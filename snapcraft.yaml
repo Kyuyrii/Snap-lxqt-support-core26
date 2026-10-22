@@ -61,7 +61,7 @@ parts:
   kvantum-theme-lubuntu:
     after: [kvantum]
     plugin: dump
-    source: https://git.lubuntu.me/Lubuntu/artwork.git
+    source: https://github.com/lubuntu-team/artwork.git
     organize:
       src/usr/share/Kvantum/Lubuntu: usr/share/Kvantum/Lubuntu
     prime:

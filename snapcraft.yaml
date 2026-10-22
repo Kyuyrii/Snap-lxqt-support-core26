@@ -1,0 +1,155 @@
+name: lxqt-support-core26
+base: core26
+adopt-info: kvantum
+platforms:
+  amd64:
+    build-on: [amd64]
+    build-for: [amd64]
+  arm64:
+    build-on: [arm64]
+    build-for: [arm64]
+summary: A Snap to improve integration with LXQt
+description: |
+  A content Snap that offers lxqt-qtplugin and Kvantum
+grade: stable
+confinement: strict
+compression: lzo
+
+slots:
+  lxqt-support-core26:
+    interface: content
+    read:
+      - /
+
+parts:
+  kvantum:
+    plugin: cmake
+    source: https://github.com/tsujan/Kvantum.git
+    source-tag: V1.1.8
+    source-subdir: Kvantum
+    build-snaps: &build-snaps
+      - kde-qt6-core26-sdk/beta
+      - kf6-core26-sdk/beta
+    build-packages:
+      - cmake
+      - make
+      - libgl-dev
+      - libglu1-mesa-dev
+      - libfreetype6-dev
+      - libxkbcommon-dev
+    build-environment: &build-environment
+      - PATH: /snap/kde-qt6-core26-sdk/current/usr/bin:/snap/kf6-core26-sdk/current/usr/bin${PATH:+:$PATH}
+      - XDG_DATA_DIRS: $CRAFT_STAGE/usr/share:/snap/kde-qt6-core26-sdk/current/usr/share:/snap/kf6-core26-sdk/current/usr/share:/usr/share${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}
+      - XDG_CONFIG_HOME: $CRAFT_STAGE/etc/xdg:/snap/kde-qt6-core26-sdk/current/etc/xdg:/snap/kf6-core26-sdk/current/etc/xdg:/etc/xdg${XDG_CONFIG_HOME:+:$XDG_CONFIG_HOME}
+      - LD_LIBRARY_PATH: /snap/kde-qt6-core26-sdk/current/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:/snap/kde-qt6-core26-sdk/current/usr/lib:/snap/kf6-core26-sdk/current/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:/snap/kf6-core26-sdk/current/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}/blas:/snap/kf6-core26-sdk/current/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}/lapack:/snap/kf6-core26-sdk/current/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}/libproxy:/snap/kf6-core26-sdk/current/usr/lib:$CRAFT_STAGE/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:$CRAFT_STAGE/usr/lib:$CRAFT_STAGE/lib/${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+      - CMAKE_PREFIX_PATH: $CRAFT_STAGE;/snap/kde-qt6-core26-sdk/current;/snap/kf6-core26-sdk/current;/usr${CMAKE_PREFIX_PATH:+;$CMAKE_PREFIX_PATH}
+      - CMAKE_FIND_ROOT_PATH: $CRAFT_STAGE;/snap/kde-qt6-core26-sdk/current;/snap/kf6-core26-sdk/current;/usr${CMAKE_FIND_ROOT_PATH:+;$CMAKE_FIND_ROOT_PATH}
+    cmake-parameters:
+      - -DCMAKE_INSTALL_PREFIX=/usr
+      - -DWITHOUT_KF=ON
+    override-pull: |
+      craftctl default
+      patch -p1 < $CRAFT_PROJECT_DIR/patch/fix_Kvantum_paths.patch
+    override-build: |
+      craftctl default
+      mkdir -p $CRAFT_PART_INSTALL/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/qt6/plugins/styles/
+      find $CRAFT_PART_INSTALL -name "libkvantum.so" -type f -exec mv -f {} $CRAFT_PART_INSTALL/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/qt6/plugins/styles/ \;
+      craftctl set version=$(date +%Y-%m-%d)
+    prime:
+      - -snap
+
+  kvantum-theme-lubuntu:
+    after: [kvantum]
+    plugin: dump
+    source: https://git.lubuntu.me/Lubuntu/artwork.git
+    organize:
+      src/usr/share/Kvantum/Lubuntu: usr/share/Kvantum/Lubuntu
+    prime:
+      - usr/share/Kvantum/Lubuntu
+
+  lxqt-qtplugin:
+    after: [libdbusmenu-lxqt, libfm-qt, libqtxdg, lxqt-build-tools]
+    plugin: cmake
+    source: https://github.com/lxqt/lxqt-qtplugin.git
+    source-tag: 2.4.0
+    build-snaps: *build-snaps
+    build-environment: *build-environment
+    cmake-parameters:
+      - -DCMAKE_INSTALL_PREFIX=/usr
+    override-build: |
+      craftctl default
+      mkdir -p $CRAFT_PART_INSTALL/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/qt6/plugins/platformthemes/
+      find $CRAFT_PART_INSTALL -name "libqtlxqt.so" -type f -exec mv -f {} $CRAFT_PART_INSTALL/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/qt6/plugins/platformthemes/ \;
+    prime:
+      - -snap
+    organize:
+      snap/lxqt-support-core26/current/usr: usr
+
+  libdbusmenu-lxqt:
+    plugin: cmake
+    source: https://github.com/lxqt/libdbusmenu-lxqt.git
+    source-tag: 0.4.0
+    build-snaps: *build-snaps
+    build-environment: *build-environment
+    cmake-parameters:
+      - -DCMAKE_INSTALL_PREFIX=/usr
+    organize:
+      snap/lxqt-support-core26/current/usr: usr
+
+  libfm-qt:
+    after: [lxqt-build-tools, lxqt-menu-data]
+    plugin: cmake
+    source: https://github.com/lxqt/libfm-qt.git
+    source-tag: 2.4.0
+    build-packages:
+      - libglib2.0-dev
+      - pkg-config
+      - libmenu-cache-dev
+      - libexif-dev
+    build-snaps: *build-snaps
+    build-environment: *build-environment
+    cmake-parameters:
+      - -DCMAKE_INSTALL_PREFIX=/usr
+    organize:
+      snap/lxqt-support-core26/current/usr: usr
+
+  lxqt-menu-data:
+    after: [lxqt-build-tools]
+    plugin: cmake
+    source: https://github.com/lxqt/lxqt-menu-data.git
+    source-tag: 2.4.0
+    build-snaps: *build-snaps
+    build-environment: *build-environment
+    cmake-parameters:
+      - -DCMAKE_INSTALL_PREFIX=/usr
+    organize:
+      snap/lxqt-support-core26/current/usr: usr
+
+  libqtxdg:
+    after: [lxqt-build-tools]
+    plugin: cmake
+    source: https://github.com/lxqt/libqtxdg.git
+    source-tag: 4.4.0
+    build-snaps: *build-snaps
+    build-environment: *build-environment
+    cmake-parameters:
+      - -DCMAKE_INSTALL_PREFIX=/usr
+    override-build: |
+      craftctl default
+      mkdir -p $CRAFT_PART_INSTALL/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/qt6/plugins/iconengines/
+      find $CRAFT_PART_INSTALL -name "libQt6XdgIconPlugin.so" -type f -exec mv -f {} $CRAFT_PART_INSTALL/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/qt6/plugins/iconengines/ \;
+    prime:
+      - -snap
+    organize:
+      snap/lxqt-support-core26/current/usr: usr
+
+  lxqt-build-tools:
+    plugin: cmake
+    source: https://github.com/lxqt/lxqt-build-tools.git
+    source-tag: 2.4.0
+    build-snaps: *build-snaps
+    build-environment: *build-environment
+    cmake-parameters:
+      - -DCMAKE_INSTALL_PREFIX=/usr
+    organize:
+      snap/lxqt-support-core26/current/usr: usr

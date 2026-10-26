@@ -28,8 +28,8 @@ parts:
     source-tag: V1.1.8
     source-subdir: Kvantum
     build-snaps: &build-snaps
-      - kde-qt6-core26-sdk/beta
-      - kf6-core26-sdk/beta
+      - kde-qt6-core26-sdk
+      - kf6-core26-sdk
     build-packages:
       - cmake
       - make
